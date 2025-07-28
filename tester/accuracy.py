@@ -128,6 +128,17 @@ class APITestAccuracy(APITestBase):
                 raise err
             return
 
+
+        # Process None output
+        torch_output_not_None = []
+        for i in range(len(torch_output)):
+            if torch_output[i] is not None:
+                torch_output_not_None.append(torch_output[i])
+        if len(torch_output_not_None) < len(torch_output):
+            torch_output = torch_output_not_None
+        else:
+            del torch_output_not_None
+
         torch_grad_success = False
         torch_out_grads = None
         if self.need_check_grad():
@@ -217,6 +228,16 @@ class APITestAccuracy(APITestBase):
             print("[cuda error]", self.api_config.config, "\n", str(err), flush=True)
             write_to_log("paddle_error", self.api_config.config)
             raise
+
+        # Process None output
+        paddle_output_not_None = []
+        for i in range(len(paddle_output)):
+            if paddle_output[i] is not None and paddle_output[i].size != 0:
+                paddle_output_not_None.append(paddle_output[i])
+        if len(paddle_output_not_None) < len(paddle_output):
+            paddle_output = paddle_output_not_None
+        else:
+            del paddle_output_not_None
 
         if self.api_config.api_name == "paddle.incubate.nn.functional.fused_rms_norm":
             paddle_output = paddle_output[0]
@@ -361,6 +382,26 @@ class APITestAccuracy(APITestBase):
                     raise err
                 return
 
+            # Process None output
+            torch_out_grads_not_None = []
+            for i in range(len(torch_out_grads)):
+                if torch_out_grads[i] is not None:
+                    torch_out_grads_not_None.append(torch_out_grads[i])
+            if len(torch_out_grads_not_None) < len(torch_out_grads):
+                torch_out_grads = torch_out_grads_not_None
+            else:
+                del torch_out_grads_not_None
+            
+            # Process None output
+            paddle_out_grads_not_None = []
+            for i in range(len(paddle_out_grads)):
+                if paddle_out_grads[i] is not None and paddle_output[i].size != 0:
+                    paddle_out_grads_not_None.append(paddle_out_grads[i])
+            if len(paddle_out_grads_not_None) < len(paddle_out_grads):
+                paddle_out_grads = paddle_out_grads_not_None
+            else:
+                del paddle_out_grads_not_None
+
             try:
                 paddle.base.core.eager._for_test_check_cuda_error()
             except Exception as err:
@@ -380,6 +421,10 @@ class APITestAccuracy(APITestBase):
             }:
                 paddle_out_grads = paddle_out_grads[:2]
                 torch_out_grads = torch_out_grads[:2]
+            elif self.api_config.api_name in {
+                "paddle.incubate.nn.functional.fused_rotary_position_embedding",
+            }: # Paddle only has 3 outputs Q, K, V
+                torch_out_grads = torch_out_grads[:len(paddle_out_grads)]
             elif self.api_config.api_name in {
                 "paddle.Tensor.fill_diagonal_tensor",
                 "paddle.diagonal_scatter",
