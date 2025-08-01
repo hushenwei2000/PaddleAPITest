@@ -478,13 +478,15 @@ class APITestBase:
         if isinstance(outputs, paddle.Tensor):
             result_outputs.append(outputs)
         elif isinstance(outputs, list) and len(outputs) > 0 and isinstance(outputs[0], paddle.Tensor):
-            result_outputs = outputs
+            for output in outputs:
+                if (output is not None) and (not isinstance(output, paddle.Tensor) or output.size != 0):
+                    result_outputs.append(output)
         elif isinstance(outputs, paddle.autograd.autograd.Hessian) or \
                 isinstance(outputs, paddle.autograd.autograd.Jacobian):
             result_outputs.append(outputs[:])
         elif isinstance(outputs, tuple):
             for output in outputs:
-                if isinstance(output, paddle.Tensor):
+                if isinstance(output, paddle.Tensor) and output.size != 0:
                     result_outputs.append(output)
                 elif isinstance(output, list):
                     for item in output:
@@ -500,6 +502,8 @@ class APITestBase:
                         isinstance(output[0], paddle.autograd.autograd.Jacobian)):
                     for lazy_obj in output:
                         result_outputs.append(lazy_obj[:])
+                elif output is None or output.size == 0:
+                    continue
                 else:
                     raise ValueError("outputs format not support")
                 # elif isinstance(output, list) and len(output) > 0 and isinstance(output[0], paddle.Tensor):
@@ -510,6 +514,8 @@ class APITestBase:
         result_outputs_grads = []
         if len(self.outputs_grad_numpy) == 0:
             for output in result_outputs:
+                if output is None or output.size == 0:
+                    continue
                 dtype = str(output.dtype).split(".")[-1]
                 if USE_CACHED_NUMPY:
                     dtype = "float32" if dtype == "bfloat16" else dtype
@@ -522,6 +528,8 @@ class APITestBase:
                         numpy_tensor = (numpy.random.random(output.shape) - 0.5).astype(dtype)
                 self.outputs_grad_numpy.append(numpy_tensor)
         for i, numpy_tensor in enumerate(self.outputs_grad_numpy):
+            if numpy_tensor is None or numpy_tensor.size == 0:
+                continue
             dtype = str(result_outputs[i].dtype).split(".")[-1]
             result_output_grad = paddle.to_tensor(
                 numpy_tensor,
@@ -571,11 +579,15 @@ class APITestBase:
         elif isinstance(outputs, torch.Size):
             result_outputs.append(torch.tensor(outputs))
         elif isinstance(outputs, list) and len(outputs) > 0 and isinstance(outputs[0], torch.Tensor):
-            result_outputs = outputs
+            for output in outputs:
+                if output is not None:
+                    result_outputs.append(output)
         elif isinstance(outputs, tuple):
             for output in outputs:
                 if isinstance(output, torch.Tensor):
                     result_outputs.append(output)
+                elif output is None:
+                    continue
                 else:
                     raise ValueError("outputs format not support")
                 # elif isinstance(output, list) and len(output) > 0 and isinstance(output[0], torch.Tensor):
@@ -586,6 +598,8 @@ class APITestBase:
         result_outputs_grads = []
         if len(self.outputs_grad_numpy) == 0:
             for output in result_outputs:
+                if output is None:
+                    continue
                 dtype = str(output.dtype).split(".")[-1]
                 if USE_CACHED_NUMPY:
                     dtype = "float32" if dtype == "bfloat16" else dtype
@@ -598,6 +612,8 @@ class APITestBase:
                         numpy_tensor = (numpy.random.random(output.shape) - 0.5).astype(dtype)
                 self.outputs_grad_numpy.append(numpy_tensor)
         for i, numpy_tensor in enumerate(self.outputs_grad_numpy):
+            if numpy_tensor is None:
+                continue
             dtype = str(result_outputs[i].dtype).split(".")[1]
             result_output_grad = torch.tensor(
                 numpy_tensor,
