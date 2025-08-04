@@ -1825,9 +1825,8 @@ class TensorConfig:
                     v_seq_len = self.get_arg(api_config, 2, "value").shape[2]
                     self.numpy_tensor = self.get_random_numpy_tensor(shape=self.shape, data_type=self.dtype, min=1, max=min(k_seq_len, v_seq_len))
                 elif self.check_arg(api_config, 5, "mask"):
-                    # mask should between -inf and 0 (0 is included)
-                    eps = numpy.finfo(self.dtype).eps
-                    self.numpy_tensor = self.get_random_numpy_tensor(shape=self.shape, data_type=self.dtype, max=0 + eps)
+                    # mask should be -inf(masked) or 0(not masked)
+                    self.numpy_tensor = numpy.random.randint(0, 2, size=self.shape).astype(self.dtype) * (numpy.finfo(self.dtype).min)
             elif api_config.api_name == "paddle.zeros":
                 self.numpy_tensor = numpy.random.randint(0, 2048, size = self.shape)
                 

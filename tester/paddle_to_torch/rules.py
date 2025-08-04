@@ -6343,8 +6343,8 @@ def variable_length_memory_efficient_attention(
     if key.shape[1] != num_heads:
         # Repeat key and value along the num_heads dimension
         repeat_factor = num_heads // key.shape[1]
-        key = key.repeat(1, repeat_factor, 1, 1)
-        value = value.repeat(1, repeat_factor, 1, 1)
+        key = key.unsqueeze(2).expand(-1,-1, repeat_factor, -1, -1).reshape(batch_size, num_heads, key_seq_len, head_size)
+        value = value.unsqueeze(2).expand(-1,-1, repeat_factor, -1, -1).reshape(batch_size, num_heads, key_seq_len, head_size)
     # Default scale if not provided
     if scale is None:
         scale = math.sqrt(1.0 / head_size)
@@ -6373,8 +6373,8 @@ def variable_length_memory_efficient_attention(
     qk_res = torch.matmul(query, key.transpose(-1, -2))  # [batch_size, num_heads, query_seq_len, key_seq_len]
     # Apply scale
     attention = qk_res * scale
-    attention = attention.masked_fill(~seq_mask, torch.finfo(attention.dtype).min)
     attention = attention + mask
+    attention = attention.masked_fill(~seq_mask, torch.finfo(attention.dtype).min)
     # Softmax over the last dimension
     softmax_result = torch.nn.functional.softmax(attention, dim=-1)
     softmax_result = softmax_result.masked_fill(~seq_mask, 0.0)
